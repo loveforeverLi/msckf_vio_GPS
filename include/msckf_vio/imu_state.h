@@ -83,7 +83,7 @@ struct IMUState {
 
   //For GPS fusion/trajectory fusion
   static Eigen::Matrix3d R_e_w;
-  static Eigen::Vector3d t_e_w;
+  static Eigen::Vector3d t_w_e;
 
   IMUState(): id(0), time(0),
     orientation(Eigen::Vector4d(0, 0, 0, 1)),

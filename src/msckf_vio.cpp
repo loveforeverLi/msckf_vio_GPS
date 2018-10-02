@@ -68,7 +68,7 @@ Isometry3d IMUState::T_imu_body = Isometry3d::Identity();
 // Static member variables in CAMState class.
 Isometry3d CAMState::T_cam0_cam1 = Isometry3d::Identity();
 
-Vector3d IMUState::t_e_w=Vector3d(0,0,0);
+Vector3d IMUState::t_w_e=Vector3d(0,0,0);
 Matrix3d IMUState::R_e_w=Matrix3d::Identity();
 
 // Static member variables in Feature class.
@@ -256,14 +256,14 @@ bool MsckfVio::initialize() {
     while(gpsifs.good())
     {
       getline(gpsifs,line);
-      if(line.find("p_e_w:")!=string::npos)
+      if(line.find("p_w_e:")!=string::npos)
       {
         getline(gpsifs,line);
         ofs<<line<<endl;
         std::vector<std::string> buffer=split(line,",");
-        IMUState::t_e_w(0,0)=stod(buffer[0].c_str());
-        IMUState::t_e_w(1,0)=stod(buffer[1].c_str());
-        IMUState::t_e_w(2,0)=stod(buffer[2].c_str());
+        IMUState::t_w_e(0,0)=stod(buffer[0].c_str());
+        IMUState::t_w_e(1,0)=stod(buffer[1].c_str());
+        IMUState::t_w_e(2,0)=stod(buffer[2].c_str());
         continue;
       }
       if(line.find("R_e_w")!=string::npos)
@@ -291,7 +291,7 @@ bool MsckfVio::initialize() {
       }
     }
     gpsifs.close();
-    ofs<<IMUState::R_e_w<<" "<<IMUState::t_e_w<<endl;
+    ofs<<IMUState::R_e_w<<" "<<IMUState::t_w_e<<endl;
     //cin.get();
     ROS_INFO("FFFF");
 
@@ -1444,10 +1444,10 @@ void MsckfVio::GPSCallback()
   VectorXd r = VectorXd::Zero(6);
   ofs<<"a"<<endl<<r<<endl;
   ofs<<"b"<<endl<<IMUState::R_e_w<<endl;
-  ofs<<"c"<<endl<<IMUState::t_e_w<<endl;
+  ofs<<"c"<<endl<<IMUState::t_w_e<<endl;
   H_x.block<3,3>(0,12)=IMUState::R_e_w;
   H_x.block<3,3>(3,6)=IMUState::R_e_w;
-  r.block<3,1>(0,0)=msg.position-IMUState::t_e_w-IMUState::R_e_w*state_server.imu_state.position;
+  r.block<3,1>(0,0)=msg.position-IMUState::t_w_e-IMUState::R_e_w*state_server.imu_state.position;
   r.block<3,1>(3,0)=msg.velocity-IMUState::R_e_w*state_server.imu_state.velocity;
   ofs<<"H_x"<<endl<<H_x<<endl;
   ofs<<"residual:"<<endl<<r<<endl;

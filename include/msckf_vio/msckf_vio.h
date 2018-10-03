@@ -119,6 +119,7 @@ class MsckfVio {
     //for GPS fusion
     void GPSCallback(const GPSMeasurementConstPtr& msg);
     void GPSCallback();
+    void AlignGPS();
     /*
      * @brief publish Publish the results of VIO.
      * @param time The time stamp of output msgs.

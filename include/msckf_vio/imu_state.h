@@ -82,8 +82,8 @@ struct IMUState {
   static Eigen::Isometry3d T_imu_body;
 
   //For GPS fusion/trajectory fusion
-  static Eigen::Matrix3d R_e_w;
-  static Eigen::Vector3d t_w_e;
+  Eigen::Vector4d q_e_w;
+  Eigen::Vector3d t_w_e;
 
   IMUState(): id(0), time(0),
     orientation(Eigen::Vector4d(0, 0, 0, 1)),
@@ -93,7 +93,9 @@ struct IMUState {
     acc_bias(Eigen::Vector3d::Zero()),
     orientation_null(Eigen::Vector4d(0, 0, 0, 1)),
     position_null(Eigen::Vector3d::Zero()),
-    velocity_null(Eigen::Vector3d::Zero()){}
+    velocity_null(Eigen::Vector3d::Zero()),
+    q_e_w(Eigen::Vector4d(0,0,0,1)),
+    t_w_e(Eigen::Vector3d(0,0,0)){}
 
   IMUState(const StateIDType& new_id): id(new_id), time(0),
     orientation(Eigen::Vector4d(0, 0, 0, 1)),
@@ -103,7 +105,9 @@ struct IMUState {
     acc_bias(Eigen::Vector3d::Zero()),
     orientation_null(Eigen::Vector4d(0, 0, 0, 1)),
     position_null(Eigen::Vector3d::Zero()),
-    velocity_null(Eigen::Vector3d::Zero()) {}
+    velocity_null(Eigen::Vector3d::Zero()),
+    q_e_w(Eigen::Vector4d(0,0,0,1)),
+    t_w_e(Eigen::Vector3d(0,0,0)) {}
 
 };
 

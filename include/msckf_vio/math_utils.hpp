@@ -10,7 +10,8 @@
 
 #include <cmath>
 #include <Eigen/Dense>
-
+#include <iostream>
+using namespace std;
 namespace msckf_vio {
 
 /*
@@ -126,7 +127,7 @@ inline Eigen::Vector4d rotationToQuaternion(
   score(1) = R(1, 1);
   score(2) = R(2, 2);
   score(3) = R.trace();
-
+  cout<<score<<endl;
   int max_row = 0, max_col = 0;
   score.maxCoeff(&max_row, &max_col);
 

@@ -271,7 +271,7 @@ void MsckfVio::AlignGPS()
   {
     ifstream gpsifs("/home/zhouyuxuan/data/GPSparameters.txt");
     string line;
-    Eigen::Matrix3d R_w_e;
+    Eigen::Matrix3d R_w_e=Eigen::Matrix3d::Zero();
     while(gpsifs.good())
     {
       getline(gpsifs,line);
@@ -306,12 +306,13 @@ void MsckfVio::AlignGPS()
         R_w_e(2,0)=stod(buffer[0].c_str());
         R_w_e(2,1)=stod(buffer[1].c_str());
         R_w_e(2,2)=stod(buffer[2].c_str());
-
-        state_server.imu_state.q_e_w=rotationToQuaternion(R_w_e.transpose());
+        Matrix3d R_e_w=R_w_e.transpose();
+        state_server.imu_state.q_e_w=rotationToQuaternion(R_e_w);
         continue;
       }
     }
     gpsifs.close();
+    ofs<<"R_w_e"<<endl<<R_w_e<<endl;
     ofs<<state_server.imu_state.q_e_w<<" "<<state_server.imu_state.t_w_e<<endl;
     //cin.get();
     ROS_INFO("FFFF");
@@ -531,7 +532,7 @@ void MsckfVio::featureCallback(
 
 
   //GPS fusion
-  //GPSCallback();
+  GPSCallback();
 
   // Publish the odometry.
   start_time = ros::Time::now();
@@ -1476,6 +1477,7 @@ void MsckfVio::GPSCallback()
   ofs<<"c"<<endl<<state_server.imu_state.t_w_e<<endl;
   H_x.block<3,3>(0,12)=R_w_e;
   H_x.block<3,3>(0,21)=R_w_e*skewSymmetric(state_server.imu_state.position);
+  H_x.block<3,3>(0,24)=Matrix3d::Identity();
   H_x.block<3,3>(3,6)=R_w_e;
   H_x.block<3,3>(3,21)=R_w_e*skewSymmetric(state_server.imu_state.velocity);
 
@@ -1546,7 +1548,7 @@ void MsckfVio::GPSUpdate(const Eigen::MatrixXd& H,const Eigen::VectorXd&r,const 
   // Update the IMU state.
   const VectorXd& delta_x_imu = delta_x.head<27>();
   ofs<<"deltax:"<<endl<<delta_x_imu<<endl;
-  
+
   if (//delta_x_imu.segment<3>(0).norm() > 0.15 ||
       //delta_x_imu.segment<3>(3).norm() > 0.15 ||
       delta_x_imu.segment<3>(6).norm() > 0.5 ||

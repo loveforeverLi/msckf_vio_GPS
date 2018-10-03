@@ -1,25 +1,49 @@
-#include <opencv2/core>
+#include <opencv2/core.hpp>
+#include <opencv2/opencv.hpp>
 #include <iomanip>
 #include <iostream>
 #include <vector>
 #include <utility>
 using namespace std;
 void pose_estimation_3d3d (
-    const QVector<cv::Mat>& pts1,
-    const QVector<cv::Mat>& pts2,
+    const vector<cv::Mat>& pts1,
+    const vector<cv::Mat>& pts2,
     cv::Mat& R, cv::Mat& t
 );
 vector<pair<int,int>> GetMatchingTime (
     const vector<cv::Mat>& pts1,
     const vector<cv::Mat>& pts2);
-vector<cv::Mat> CompareWidget::ReadTrajetoryFromFile(std::string filename,int index1,int index2,int index3,int index4,bool is_inv,bool is_only_xy);
+vector<cv::Mat> ReadTrajetoryFromFile(std::string filename,int index1,int index2,int index3,int index4,bool is_inv,bool is_only_xy);
 
 int main()
 {
+    vector<cv::Mat> t1=ReadTrajetoryFromFile("/home/zhouyuxuan/data/traj.txt",1,2,3,0,false,false);
+    vector<cv::Mat> t2=ReadTrajetoryFromFile("/home/zhouyuxuan/data/MH03_gps.txt",1,2,3,0,false,false);
+    cv::Mat R;
+    cv::Mat t;
+    vector<pair<int,int >> v=GetMatchingTime(t1,t2);
+    vector<cv::Mat> vec1;
+    vector<cv::Mat> vec2;
+    double ratio=100;
+    //cerr<<v.size()<<endl;
+    int count=0,count_Ref=0;
+    for(int i=0;i<(int)v.size()*(ratio/100.0);i++)
+    {
+                vec1.push_back(t1[v[i].first]);
+                vec2.push_back(t2[v[i].second]);
+                count=v[i].first;
+                count_Ref=v[i].second;
+    }
+    pose_estimation_3d3d(vec2,vec1,R,t);
+    ofstream ofs("transform.txt");
+    ofs<<"R_e_w:"<<endl<<R<<endl;
+    ofs<<"t_w_e:"<<endl<<t<<endl;
+
+    
     return 0;
 }
 
-vector<cv::Mat> CompareWidget::ReadTrajetoryFromFile(std::string filename,int index1,int index2,int index3,int index4,bool is_inv,bool is_only_xy)
+vector<cv::Mat> ReadTrajetoryFromFile(std::string filename,int index1,int index2,int index3,int index4,bool is_inv,bool is_only_xy)
 {
     std::fstream fs(filename);
     std::string buffer;
@@ -120,7 +144,7 @@ vector<pair<int,int>> GetMatchingTime (
           }
           else
           {
-              vec.push_back(QPair<int,int>(i,j-1));
+              vec.push_back(pair<int,int>(i,j-1));
               //cerr<<dt<<endl;
               //cerr<<i<<"/"<<pts1.size()<<" "<<j-1<<"/"<<pts2.size()<<endl;
               i++;
@@ -138,7 +162,7 @@ vector<pair<int,int>> GetMatchingTime (
            }
            else
            {
-               vec.push_back(QPair<int,int>(i-1,j));
+               vec.push_back(pair<int,int>(i-1,j));
               // cerr<<dt<<endl;
               // cerr<<i-1<<"/"<<pts1.size()<<" "<<j<<"/"<<pts2.size()<<endl;
                j++;

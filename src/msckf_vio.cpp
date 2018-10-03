@@ -1451,14 +1451,13 @@ void MsckfVio::GPSCallback()
   r.block<3,1>(3,0)=msg.velocity-IMUState::R_e_w*state_server.imu_state.velocity;
   ofs<<"H_x"<<endl<<H_x<<endl;
   ofs<<"residual:"<<endl<<r<<endl;
-  return;
   MatrixXd noise=MatrixXd::Identity(6,6);
-  noise(0,0)=1;
-  noise(1,1)=1;
-  noise(2,2)=1;
-  noise(3,3)=1;
-  noise(4,4)=1;
-  noise(5,5)=1;
+  noise(0,0)=0.1;
+  noise(1,1)=0.1;
+  noise(2,2)=0.1;
+  noise(3,3)=0.01;
+  noise(4,4)=0.01;
+  noise(5,5)=0.01;
 
   GPSUpdate(H_x,r,noise);
 

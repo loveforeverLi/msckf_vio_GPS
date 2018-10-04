@@ -36,9 +36,25 @@ int main()
     }
     pose_estimation_3d3d(vec2,vec1,R,t);
     ofstream ofs("transform.txt");
-    ofs<<"R_e_w:"<<endl<<R<<endl;
+    ofs<<"R_w_e:"<<endl<<R<<endl;
     ofs<<"t_w_e:"<<endl<<t<<endl;
+    ofs.close();
 
+    ofstream tjofs("new_traj");
+    for(int i=0;i<t1.size();i++)
+    {
+        cv::Mat newpos=cv::Mat::zeros(3,1,CV_64F);
+        double time=t1[i].at<double>(3);
+        cout<<t1[i].rowRange(0,3)<<endl;
+        newpos=R*t1[i].rowRange(0,3)+t;
+        
+        tjofs<<setprecision(15)<<time<<" "
+            <<newpos.at<double>(0)<<" "
+            <<newpos.at<double>(1)<<" "
+            <<newpos.at<double>(2)<<" "
+            <<endl;
+    }
+    tjofs.close();
     
     return 0;
 }

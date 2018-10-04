@@ -77,8 +77,8 @@ Feature::OptimizationConfig Feature::optimization_config;
 map<int, double> MsckfVio::chi_squared_test_table;
 
 //for GPS fusion
-double align_rotation_noise=0.0001*0.0001;
-double align_translation_noise=0.001*0.001;
+double align_rotation_noise=0.1*0.1;
+double align_translation_noise=0.5*0.5;
 
 
 
@@ -307,6 +307,13 @@ void MsckfVio::AlignGPS()
         R_w_e(2,1)=stod(buffer[1].c_str());
         R_w_e(2,2)=stod(buffer[2].c_str());
         Matrix3d R_e_w=R_w_e.transpose();
+        
+        Vector4d q_turb=Vector4d(1,2,3,100);
+        quaternionNormalize(q_turb);
+        Matrix3d R_turb=quaternionToRotation(q_turb);
+        ofs<<"R_turb"<<endl<<R_turb<<endl;
+        R_e_w=R_turb*R_e_w;
+
         state_server.imu_state.q_e_w=rotationToQuaternion(R_e_w);
         continue;
       }
@@ -1473,25 +1480,25 @@ void MsckfVio::GPSCallback()
   VectorXd r = VectorXd::Zero(6);
   ofs<<"a"<<endl<<r<<endl;
   ofs<<"b"<<endl<<R_w_e<<endl;
-  ofs<<"q"<<endl<<state_server.imu_state.q_e_w<<endl;
-  ofs<<"c"<<endl<<state_server.imu_state.t_w_e<<endl;
+  ofs<<"q"<<endl<<setprecision(15)<<state_server.imu_state.q_e_w<<endl;
+  ofs<<"c"<<endl<<setprecision(15)<<state_server.imu_state.t_w_e<<endl;
   H_x.block<3,3>(0,12)=R_w_e;
-  H_x.block<3,3>(0,21)=R_w_e*skewSymmetric(state_server.imu_state.position);
+  H_x.block<3,3>(0,21)=-R_w_e*skewSymmetric(state_server.imu_state.position);
   H_x.block<3,3>(0,24)=Matrix3d::Identity();
   H_x.block<3,3>(3,6)=R_w_e;
-  H_x.block<3,3>(3,21)=R_w_e*skewSymmetric(state_server.imu_state.velocity);
+  H_x.block<3,3>(3,21)=-R_w_e*skewSymmetric(state_server.imu_state.velocity);
 
   r.block<3,1>(0,0)=msg.position-state_server.imu_state.t_w_e-R_w_e*state_server.imu_state.position;
   r.block<3,1>(3,0)=msg.velocity-R_w_e*state_server.imu_state.velocity;
-  ofs<<"H_x"<<endl<<H_x<<endl;
+  //ofs<<"H_x"<<endl<<H_x<<endl;
   MatrixXd noise=MatrixXd::Identity(6,6);
   ofs<<"residual:"<<endl<<r<<endl;
-  noise(0,0)=1;
-  noise(1,1)=1;
-  noise(2,2)=1;
-  noise(3,3)=0.5;
-  noise(4,4)=0.5;
-  noise(5,5)=0.5;
+  noise(0,0)=0.01;
+  noise(1,1)=0.01;
+  noise(2,2)=0.01;
+  noise(3,3)=0.0004;
+  noise(4,4)=0.0004;
+  noise(5,5)=0.0004;
 
   GPSUpdate(H_x,r,noise);
 

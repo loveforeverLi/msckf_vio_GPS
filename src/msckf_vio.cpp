@@ -283,6 +283,10 @@ void MsckfVio::AlignGPS()
         state_server.imu_state.t_w_e(0,0)=stod(buffer[0].c_str());
         state_server.imu_state.t_w_e(1,0)=stod(buffer[1].c_str());
         state_server.imu_state.t_w_e(2,0)=stod(buffer[2].c_str());
+        
+        Vector3d t_turb=Vector3d(0.2,-0.2,-0.2);
+        state_server.imu_state.t_w_e=state_server.imu_state.t_w_e+t_turb;
+
         continue;
       }
       if(line.find("R_w_e")!=string::npos)
@@ -308,7 +312,7 @@ void MsckfVio::AlignGPS()
         R_w_e(2,2)=stod(buffer[2].c_str());
         Matrix3d R_e_w=R_w_e.transpose();
         
-        Vector4d q_turb=Vector4d(1,2,3,100);
+        Vector4d q_turb=Vector4d(10,10,10,100);
         quaternionNormalize(q_turb);
         Matrix3d R_turb=quaternionToRotation(q_turb);
         ofs<<"R_turb"<<endl<<R_turb<<endl;
@@ -319,7 +323,7 @@ void MsckfVio::AlignGPS()
       }
     }
     gpsifs.close();
-    ofs<<"R_w_e"<<endl<<R_w_e<<endl;
+    ofs<<"R_w_e"<<endl<<quaternionToRotation(state_server.imu_state.q_e_w).transpose()<<endl;
     ofs<<state_server.imu_state.q_e_w<<" "<<state_server.imu_state.t_w_e<<endl;
     //cin.get();
     ROS_INFO("FFFF");

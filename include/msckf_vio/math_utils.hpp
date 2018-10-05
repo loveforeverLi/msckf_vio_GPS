@@ -158,7 +158,18 @@ inline Eigen::Vector4d rotationToQuaternion(
   quaternionNormalize(q);
   return q;
 }
-
+inline Eigen::Vector3d quaternionToAttitude(Eigen::Vector4d q)
+{
+	double	q11 = q(3)*q(3), q12 = q(3)*q(0), q13 = q(3)*q(1), q14 = q(3)*q(2), 
+		q22 = q(0)*q(0), q23 = q(0)*q(1), q24 = q(0)*q(2),     
+		q33 = q(1)*q(1), q34 = q(1)*q(2),  
+		q44 = q(2)*q(2);
+	Eigen::Vector3d att;
+	att(0) = asin(2*(q34+q12));
+	att(1) = atan2(-2*(q24-q13), q11-q22-q33+q44);
+	att(2) = atan2(-2*(q23-q14), q11-q22+q33-q44);
+	return att;
+}
 } // end namespace msckf_vio
 
 #endif // MSCKF_VIO_MATH_UTILS_HPP

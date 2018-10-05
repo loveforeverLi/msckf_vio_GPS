@@ -32,6 +32,7 @@ using namespace std;
 using namespace Eigen;
 ofstream ofs("/home/zhouyuxuan/log.txt");
 ofstream ofstraj("/home/zhouyuxuan/traj.txt");
+int image_count=0;
 std::vector<std::string> split(const std::string& s, const std::string& c)
 {
  // ofs<<"s"<<s<<endl;
@@ -328,7 +329,7 @@ void MsckfVio::AlignGPS()
     //cin.get();
     ROS_INFO("FFFF");
 
-    ifstream gpsdata("/home/zhouyuxuan/data/MH03_gps.txt");
+    ifstream gpsdata("/home/zhouyuxuan/data/MH03_gps_freq.txt");
     while(gpsdata.good())
     {
      // ofs<<"n"<<GPS_buffer.size()<<endl;
@@ -509,13 +510,26 @@ void MsckfVio::featureCallback(
   static int critical_time_cntr = 0;
   double processing_start_time = ros::Time::now().toSec();
 
+  image_count++;
+  
+
   // Propogate the IMU state.
   // that are received before the image msg.
   ros::Time start_time = ros::Time::now();
   batchImuProcessing(msg->header.stamp.toSec());
   double imu_processing_time = (
       ros::Time::now()-start_time).toSec();
+/*
+  if(image_count>1900&&image_count<2000)
+  {
+    GPSCallback();
+    publish(msg->header.stamp);
+    onlineReset();
+    return;
+  }
+  */
 
+ 
   // Augment the state vector.
   start_time = ros::Time::now();
   stateAugmentation(msg->header.stamp.toSec());
@@ -540,7 +554,7 @@ void MsckfVio::featureCallback(
   double prune_cam_states_time = (
       ros::Time::now()-start_time).toSec();
 
-
+  
 
   //GPS fusion
   GPSCallback();
@@ -1497,12 +1511,18 @@ void MsckfVio::GPSCallback()
   //ofs<<"H_x"<<endl<<H_x<<endl;
   MatrixXd noise=MatrixXd::Identity(6,6);
   ofs<<"residual:"<<endl<<r<<endl;
-  noise(0,0)=0.01;
-  noise(1,1)=0.01;
-  noise(2,2)=0.01;
-  noise(3,3)=0.0004;
-  noise(4,4)=0.0004;
-  noise(5,5)=0.0004;
+  //noise(0,0)=0.01;
+  //noise(1,1)=0.01;
+  //noise(2,2)=0.01;
+  //noise(3,3)=0.0004;
+  //noise(4,4)=0.0004;
+  //noise(5,5)=0.0004;
+  noise(0,0)=0.25;
+  noise(1,1)=0.25;
+  noise(2,2)=0.25;
+  noise(3,3)=0.25;
+  noise(4,4)=0.25;
+  noise(5,5)=0.25;
 
   GPSUpdate(H_x,r,noise);
 
@@ -1762,10 +1782,29 @@ void MsckfVio::publish(const ros::Time& time) {
   feature_msg_ptr->width = feature_msg_ptr->points.size();
 
   feature_pub.publish(feature_msg_ptr);
-  ofstraj<<setprecision(15)<<imu_state.time<<" "
-          <<setprecision(15)<<imu_state.position(0)<<" "
-          <<setprecision(15)<<imu_state.position(1)<<" "
-          <<setprecision(15)<<imu_state.position(2)<<endl;
+
+  Eigen::Vector3d att=quaternionToAttitude(imu_state.q_e_w);
+  ofstraj<<setw(20)<<setprecision(15)<<imu_state.time<<" "
+          <<setw(15)<<setprecision(6)<<imu_state.position(0)<<" "
+          <<setw(15)<<setprecision(6)<<imu_state.position(1)<<" "
+          <<setw(15)<<setprecision(6)<<imu_state.position(2)<<" "
+          <<setw(15)<<setprecision(6)<<imu_state.orientation(0)<<" "
+          <<setw(15)<<setprecision(6)<<imu_state.orientation(1)<<" "
+          <<setw(15)<<setprecision(6)<<imu_state.orientation(2)<<" "
+          <<setw(15)<<setprecision(6)<<imu_state.orientation(3)<<" "
+          <<setw(15)<<setprecision(6)<<imu_state.velocity(0)<<" "
+          <<setw(15)<<setprecision(6)<<imu_state.velocity(1)<<" "
+          <<setw(15)<<setprecision(6)<<imu_state.velocity(2)<<" "
+          <<setw(20)<<setprecision(15)<<imu_state.t_w_e(0)<<" "
+          <<setw(20)<<setprecision(15)<<imu_state.t_w_e(1)<<" "
+          <<setw(20)<<setprecision(15)<<imu_state.t_w_e(2)<<" "
+          <<setw(15)<<setprecision(6)<<imu_state.q_e_w(0)<<" "
+          <<setw(15)<<setprecision(6)<<imu_state.q_e_w(1)<<" "
+          <<setw(15)<<setprecision(6)<<imu_state.q_e_w(2)<<" "
+          <<setw(15)<<setprecision(6)<<imu_state.q_e_w(3)<<" "
+          <<setw(15)<<setprecision(6)<<att(0)<<" "
+          <<setw(15)<<setprecision(6)<<att(1)<<" "
+          <<setw(15)<<setprecision(6)<<att(2)<<" "<<endl;
   return;
 }
 

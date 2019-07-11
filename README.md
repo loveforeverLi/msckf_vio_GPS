@@ -1,3 +1,7 @@
+# Msckf_vio_GPS
+This is a modified version of msckf_vio. Tested using mynteye stereo camera and ublox M8P.
+```
+```
 # MSCKF\_VIO
 
 

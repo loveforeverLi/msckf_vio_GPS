@@ -92,6 +92,7 @@ target_link_libraries(msckf_vio
 # Msckf Vio nodelet
 add_library(msckf_vio_nodelet
   src/msckf_vio_nodelet.cpp
+  include/geo_utils.hpp
 )
 add_dependencies(msckf_vio_nodelet
   ${${PROJECT_NAME}_EXPORTED_TARGETS}

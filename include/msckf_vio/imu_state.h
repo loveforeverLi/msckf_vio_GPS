@@ -82,8 +82,20 @@ struct IMUState {
   static Eigen::Isometry3d T_imu_body;
 
   //For GPS fusion/trajectory fusion
-  static Eigen::Matrix3d R_e_w;
-  static Eigen::Vector3d t_w_e;
+  //Eigen::Matrix3d R_w_n; // state
+  double yaw; // state
+  Eigen::Vector3d t_w_e; // state
+  Eigen::Vector3d t_g_b;
+  Eigen::Matrix3d R_n_e;
+
+  inline Eigen::Matrix3d getR_w_n() const
+  {
+      Eigen::Matrix3d R;
+      R<<cos(yaw),-sin(yaw),0,
+         sin(yaw),cos(yaw),0,
+         0,0,1;
+      return R;
+  }
 
   IMUState(): id(0), time(0),
     orientation(Eigen::Vector4d(0, 0, 0, 1)),

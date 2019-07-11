@@ -158,6 +158,38 @@ inline Eigen::Vector4d rotationToQuaternion(
   return q;
 }
 
+inline bool IGG3Weight(Eigen::VectorXd &v, Eigen::MatrixXd &R, double k0=1.5,double k1=3.0)
+{
+    int n = v.rows();
+    Eigen::VectorXd r = Eigen::VectorXd::Zero(n);
+    for(int i = 0; i<n;i++)
+    {
+        double vn = fabs(v(i));
+        if(vn<=k0)
+        {
+            r(i)=1.0;
+        }
+        else if(vn>k0 && vn <=k1)
+        {
+            r(i)=k0/vn*((k1-vn)/(k1-k0))*((k1-vn)/(k1-k0));
+        }
+        else
+        {
+            r(i)=0.0;
+        }
+    }
+    for( int i=0;i<n;i++)
+    {
+        R(i,i)*=r(i);
+        for(int j=0;j<i;j++)
+        {
+            R(i,j)*=sqrt(r(i)*r(j));
+            R(j,i)*=sqrt(r(i)*r(j));
+        }
+    }
+    return true;
+}
+
 } // end namespace msckf_vio
 
 #endif // MSCKF_VIO_MATH_UTILS_HPP

@@ -11,6 +11,7 @@
 #include <map>
 #include <set>
 #include <vector>
+#include <queue>
 #include <string>
 #include <Eigen/Dense>
 #include <Eigen/Geometry>
@@ -19,6 +20,8 @@
 #include <ros/ros.h>
 #include <sensor_msgs/Imu.h>
 #include <nav_msgs/Odometry.h>
+#include <sensor_msgs/NavSatFix.h>
+#include <geometry_msgs/TwistWithCovarianceStamped.h>
 #include <tf/transform_broadcaster.h>
 #include <std_srvs/Trigger.h>
 
@@ -27,6 +30,7 @@
 #include "feature.hpp"
 #include <msckf_vio/CameraMeasurement.h>
 #include <msckf_vio/GPSMeasurement.h>
+
 
 namespace msckf_vio {
 /*
@@ -40,7 +44,7 @@ struct GPS_msg{
     long long timestamp;
     Eigen::Vector3d position;
     Eigen::Vector3d velocity;
-    
+
 };
 
 class MsckfVio {
@@ -84,9 +88,7 @@ class MsckfVio {
       Eigen::Matrix<double, 12, 12> continuous_noise_cov;
     };
 
-    //temporarily
-    std::vector<GPS_msg> GPS_buffer;
-    int GPS_index;
+
 
 
     /*
@@ -116,9 +118,7 @@ class MsckfVio {
     void featureCallback(const CameraMeasurementConstPtr& msg);
 
 
-    //for GPS fusion
-    void GPSCallback(const GPSMeasurementConstPtr& msg);
-    void GPSCallback();
+
     /*
      * @brief publish Publish the results of VIO.
      * @param time The time stamp of output msgs.
@@ -179,7 +179,6 @@ class MsckfVio {
     // Reset the system online if the uncertainty is too large.
     void onlineReset();
 
-    void GPSUpdate(const Eigen::MatrixXd& H,const Eigen::VectorXd&r,const Eigen::MatrixXd &noise);
     // Chi squared test table.
     static std::map<int, double> chi_squared_test_table;
 
@@ -204,8 +203,7 @@ class MsckfVio {
     bool is_first_img;
 
 
-    //for GPS fusion
-    bool is_aligned;
+
 
     // The position uncertainty threshold is used to determine
     // when to reset the system online. Otherwise, the ever-
@@ -253,6 +251,26 @@ class MsckfVio {
     ros::Publisher mocap_odom_pub;
     geometry_msgs::TransformStamped raw_mocap_odom_msg;
     Eigen::Isometry3d mocap_initial_frame;
+
+
+    ros::Subscriber gps_sub;
+    ros::Subscriber gps_vel_sub;
+    void GPSUpdate();
+    void GPSmeasurementUpdate(const Eigen::MatrixXd& H,const Eigen::VectorXd&r,const Eigen::MatrixXd &noise);
+    //for GPS fusion
+    bool is_aligned;
+    //for GPS fusion
+    void GPSCallback(const sensor_msgs::NavSatFix & msg);
+    void GPSVelCallback(const geometry_msgs::TwistWithCovarianceStamped &msg);
+    //void GPSCallback();
+    void GPSAlign();
+    double last_check_GPS_time;
+    //temporarily
+    std::list<std::pair<double,sensor_msgs::NavSatFix>> GPS_buffer;
+    std::list<std::pair<double,geometry_msgs::TwistWithCovarianceStamped>> GPS_vel_buffer;
+
+    std::list<std::pair<double,Eigen::Vector3d>> vio_buffer;
+    int GPS_index;
 };
 
 typedef MsckfVio::Ptr MsckfVioPtr;

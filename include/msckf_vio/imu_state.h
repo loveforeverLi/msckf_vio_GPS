@@ -87,6 +87,7 @@ struct IMUState {
   Eigen::Vector3d t_w_e; // state
   Eigen::Vector3d t_g_b;
   Eigen::Matrix3d R_n_e;
+  Eigen::Vector3d angular_velocity;
 
   inline Eigen::Matrix3d getR_w_n() const
   {

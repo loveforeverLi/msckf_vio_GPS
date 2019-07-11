@@ -285,7 +285,9 @@ void MsckfVio::imuCallback(
     msg_copy.linear_acceleration.x-=-0.080;
     msg_copy.linear_acceleration.y-=-0.034;
     msg_copy.linear_acceleration.z-= 0.170;
-
+    state_server.imu_state.angular_velocity=Vector3d(msg->angular_velocity.x,
+                                                     msg->angular_velocity.y,
+                                                     msg->angular_velocity.z)-state_server.imu_state.gyro_bias;
 
     imu_msg_buffer.push_back(msg_copy);
 
@@ -457,6 +459,11 @@ void MsckfVio::featureCallback(
             Vector3d pos_meas = geo_utils::CoordTrans::Geod2Cart(Vector3d(gps_msg.latitude,
                                                                           gps_msg.longitude,
                                                                           gps_msg.altitude));
+            Vector3d vel_meas = Vector3d(gps_vel_msg.twist.twist.linear.x,
+                                         gps_vel_msg.twist.twist.linear.y,
+                                         gps_vel_msg.twist.twist.linear.z);
+            vel_meas(2)=0.0;
+
             auto &imu_state = state_server.imu_state;
             Matrix3d R_w_b = quaternionToRotation( imu_state.orientation);
             Vector3d t_b_w = imu_state.position;
@@ -467,12 +474,14 @@ void MsckfVio::featureCallback(
             MatrixXd H_x = MatrixXd::Zero(6,25+6*state_server.cam_states.size());
             VectorXd r = VectorXd::Zero(6);
             r.head<3>()=-pos_meas + imu_state.t_w_e + imu_state.R_n_e*imu_state.getR_w_n()*(t_b_w+ R_w_b.transpose()*t_g_b);
-            //r.tail<3>()= Vector3d::Zero();
+            r.tail<3>()=-vel_meas + imu_state.getR_w_n()* imu_state.velocity;
             H_x.block<3,3>(0,12)=R_w_e;
             //H_x.block<3,3>(0,0)=R_w_e*R_w_b.transpose()*skewSymmetric(t_g_b);
 
             H_x.block<3,1>(0,21)=-(imu_state.R_n_e*skewSymmetric(imu_state.getR_w_n()*(t_b_w+R_w_b.transpose()*t_g_b))).col(2);
             H_x.block<3,3>(0,22)=Matrix3d::Identity();
+            H_x.block<3,1>(3,21)=-(skewSymmetric(imu_state.getR_w_n()*imu_state.velocity)).col(2);
+            H_x.block<3,3>(3,6)=imu_state.getR_w_n();
             H_x=-H_x;
 
       //r.head<3>()=-pos_meas + imu_state.t_w_e + imu_state.R_w_e*(t_b_w+ R_w_b.transpose()*t_g_b);
@@ -489,22 +498,27 @@ void MsckfVio::featureCallback(
             // measurement noise
             MatrixXd noise=MatrixXd::Identity(6,6);
 
-            Matrix3d R_pos;
-            R_pos<< gps_msg.position_covariance[0],gps_msg.position_covariance[1],gps_msg.position_covariance[2],
+            Matrix3d R_pos_enu;
+            R_pos_enu<< gps_msg.position_covariance[0],gps_msg.position_covariance[1],gps_msg.position_covariance[2],
                     gps_msg.position_covariance[3],gps_msg.position_covariance[4],gps_msg.position_covariance[5],
                     gps_msg.position_covariance[6],gps_msg.position_covariance[7],gps_msg.position_covariance[8];
             Matrix3d R_e_n = geo_utils::CoordTrans::getRne(Vector3d(gps_msg.latitude,
                                                                     gps_msg.longitude,
                                                                     gps_msg.altitude));
-            ROS_INFO("noise");
             Matrix3d R_n_e = R_e_n.transpose();
-            noise.block<3,3>(0,0)=R_n_e*R_pos*R_n_e.transpose();
-            //cout<<noise<<endl;
+            Matrix3d R_pos=R_n_e*R_pos_enu*R_n_e.transpose();
+            Matrix3d R_vel;
+            R_vel<<gps_vel_msg.twist.covariance[0],gps_vel_msg.twist.covariance[1],gps_vel_msg.twist.covariance[2],
+                    gps_vel_msg.twist.covariance[6],gps_vel_msg.twist.covariance[7],gps_vel_msg.twist.covariance[8],
+                    gps_vel_msg.twist.covariance[12],gps_vel_msg.twist.covariance[13],gps_vel_msg.twist.covariance[14];
 
             // robust stuff
-            if(!IGG3Weight(r,noise,1.0,6.0)) return;
+            if(!IGG3Weight(r.head<3>(),R_pos,1.0,6.0)) return;
+            if(!IGG3Weight(r.tail<3>(),R_vel,0.3,0.6)) return;
 
-            noise/=16;
+            noise.block<3,3>(0,0)=R_pos/16;
+            noise.block<3,3>(3,3)=R_vel/16;
+            //cout<<noise<<endl;
 
             Matrix3d R_w_base =quaternionToRotation(state_server.cam_states.begin()->second.orientation);
             Vector3d t_base_w = state_server.cam_states.begin()->second.position;
@@ -534,7 +548,8 @@ void MsckfVio::featureCallback(
             H_x = MatrixXd::Zero(6,25+6*state_server.cam_states.size());
             r = VectorXd::Zero(6);
             r.head<3>()=-pos_meas + imu_state.t_w_e + imu_state.R_n_e*imu_state.getR_w_n()*(t_b_w+ R_w_b.transpose()*t_g_b);
-            r.tail<3>()= Vector3d::Zero();
+            r.tail<3>()=-vel_meas + imu_state.getR_w_n()* imu_state.velocity+imu_state.getR_w_n()*R_w_b.transpose()*
+                    skewSymmetric(imu_state.angular_velocity)*t_g_b;
             cout<<r.transpose()<<endl;
 
 
@@ -1762,7 +1777,7 @@ void MsckfVio::GPSAlign()
 
     while(GPS_buffer.front().first < last_check_GPS_time - 15) GPS_buffer.erase(GPS_buffer.begin());
     while(vio_buffer.front().first < last_check_GPS_time - 15) vio_buffer.erase(vio_buffer.begin());
-    ROS_INFO("%d %d",GPS_buffer.size(),vio_buffer.size());
+    ROS_INFO("%d %d",(int)GPS_buffer.size(),(int)vio_buffer.size());
 
     // construct GPS/vio trajectories to do ICP
     vector<pair<double,Vector3d>> GPS_pos_buffer(GPS_buffer.size());
@@ -1808,7 +1823,7 @@ void MsckfVio::GPSAlign()
                                                         GPS_buffer.back().second.altitude
                                                         ));
     is_aligned=registration_4DOF(vio_pos_buffer,GPS_pos_buffer,Rne.transpose(),yaw,t);
-    ROS_INFO("ALIGNED # : %d",is_aligned);
+    ROS_INFO("ALIGNED # : %d",(int)is_aligned);
     if(is_aligned)
     {
         ROS_INFO("GPS ALIGNED SUCCESSFULLY!");

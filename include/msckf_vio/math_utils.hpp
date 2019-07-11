@@ -158,7 +158,7 @@ inline Eigen::Vector4d rotationToQuaternion(
   return q;
 }
 
-inline bool IGG3Weight(Eigen::VectorXd &v, Eigen::MatrixXd &R, double k0=1.5,double k1=3.0)
+inline bool IGG3Weight(const Eigen::Vector3d &v, Eigen::Matrix3d &R, double k0=1.5,double k1=3.0)
 {
     int n = v.rows();
     Eigen::VectorXd r = Eigen::VectorXd::Zero(n);
